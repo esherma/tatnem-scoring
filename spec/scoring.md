@@ -56,17 +56,22 @@ A submission arrives in one of four formats and is converted to the canonical pm
 
 The prior q₀ is the MSR state before the first submission. The default is **uniform**: p = 0.5 for binary, 1/N per bin for numeric. A sponsor MAY supply a prior, subject to review. It is mixed as **0.9 · sponsor + 0.1 · uniform**, so that no region is effectively ruled out.
 
-Under an MSR the sponsor pays only for improvement over the prior. A sharper prior does not reduce worst-case cost, though. A point-mass prior has a larger maximum loss than a uniform one, so c_max goes down and prizes shrink.
+Under an MSR the sponsor pays only for improvement over the prior. A sharper prior does not reduce worst-case cost, though. A point-mass prior has a larger maximum loss than a uniform one. The scale factor c_max (§4), which sets the size of prizes and stakes, is inversely proportional to that maximum loss, so a sharper prior makes prizes smaller.
 
 ## 4. The scale factor and the budget cap
 
-Losses are dimensionless. The scale factor c converts a loss improvement into pool units: dollars of prize on a cash question, or credits on a credit-prize question.
+Losses are dimensionless numbers. Every question therefore has a **scale factor c**: the number of pool units (dollars of prize on a cash question, credits on a credit-prize question) that one unit of loss improvement is worth. A submission that lowers the consensus loss by ΔL earns c · ΔL. One that raises it by ΔL loses c · ΔL in credits. A bigger c means bigger prizes and bigger stakes.
 
-Let P be the prize pool (in major units) and L*_prior = max_x L(q₀, x). Then
+**c_max** is the value of c when the question opens. It is the largest scale at which the sponsor's worst-case cost still fits in the pool. By §5 property 3, the total points over any sequence of submissions and any outcome are at most c_max · L*_prior, where L*_prior = max_x L(q₀, x) is the prior's worst-case loss. So, with P the prize pool in major units,
 
   c_max = k · (1 − r) · P / L*_prior
 
-where k (budget multiplier) and r (reserve) are per-question parameters, frozen at open and published with the question. Platform defaults are k = 1 and r = 0.10.
+which caps that worst-case total at k · (1 − r) · P. The two parameters:
+
+- **k, the budget multiplier.** This is how much of the pool the worst-case total may use. With k = 1 it never exceeds (1 − r) · P, whatever forecasters do. A larger k scales every prize and stake up, which strengthens incentives, but makes haircuts (§7.1) more frequent.
+- **r, the reserve.** This is a fraction of the pool held back from that worst-case bound. Cash prizes are paid on positive nets only (§7.1), and their sum can exceed the bounded total. The reserve is headroom for that case, so that a haircut is rarely needed.
+
+Each question publishes its k, r, δ (§5) and c_max, and they are frozen when it opens.
 
 ## 5. Per-submission points, with time decay
 
@@ -78,7 +83,7 @@ Submission k arrives at time t_k (server time when its question lock was taken).
 
   the MSR state becomes q_k = p_k.
 
-δ is the per-question decay, frozen at open (platform default 0.5). c_k is stored on the submission. A submission whose pmf is bitwise equal to q_{k−1} is a **no-op**: its points are exactly 0.0.
+In words: **c_k is the exchange rate in force when submission k arrives.** It starts at c_max when the question opens and falls linearly to (1 − δ) · c_max at close, so the same improvement to the forecast pays less the later it arrives. δ ∈ [0, 1] is the question's **decay**: δ = 0 means no decay, and δ = 0.5 means an improvement at close is worth half as much as at open. c_k is stored on the submission. A submission whose pmf is bitwise equal to q_{k−1} is a **no-op**: its points are exactly 0.0.
 
 Properties (each is a test in the reference implementation):
 
@@ -97,7 +102,7 @@ Settlement nets points per **principal** per question, so the stake is computed 
 
   lock_i = max( ceil_minor( max(0, max_x −net_i(x)) ),  100 c-cr × (number of i's non-no-op submissions) )
 
-The max is over x ∈ {0, 1} (binary) or the N bin midpoints (numeric), which is exact. One credit stands for one unit of points. **Every non-no-op submission locks at least 1 cr**, so zero-risk spam is impossible. No-ops lock nothing.
+The max is over x ∈ {0, 1} (binary) or the N bin midpoints (numeric), which is exact. One credit stands for one unit of points. **Every non-no-op submission locks at least 1 cr**, so no submission that moves the forecast is free of risk. No-ops lock nothing.
 
 On each new submission the platform recomputes lock_i and moves the difference between the principal's available and locked credits. It rejects the submission if the principal has too few credits available. Each term of net_i depends only on i's report and the state just before it. So a later submission by another principal never changes lock_i. Exposure caps may apply to new principals. Each principal can see its own current cap.
 
@@ -120,7 +125,7 @@ Settlement runs once, at resolution, over the accepted and non-voided submission
 7. refund = P − Σ prize_i  (≥ 0) → back to the sponsor
 ```
 
-Losses are burned credits and never reach the sponsor, so cash out is G (capped at P), not the telescoped net. With the default k = 1, a haircut is rare. Where one applies, strict properness holds only up to the haircut.
+**The haircut h.** Positive nets are paid in cash, but negative nets burn credits, and burned credits never go back into the pool. So the cash owed is G, the sum of positive nets, not the telescoped total that §5 bounds. G can be larger than that total. For example, one principal moves the forecast the wrong way and loses credits, and another earns cash for moving it back. If G exceeds the pool P, every positive net is scaled by the same factor h = P/G. That way the cash paid never exceeds P and each winner keeps the same share of G. With k = 1 this takes G > P, which the reserve r (§4) makes rare. The cost of a haircut is that payouts are then no longer exactly proportional to points, so strict properness holds only up to the factor h. Questions settle without a haircut whenever G ≤ P.
 
 ### 7.2 Credit-prize questions
 
