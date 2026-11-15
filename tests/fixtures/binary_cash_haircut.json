@@ -1,0 +1,139 @@
+{
+  "format": "tatnem-settlement-export",
+  "format_version": "0",
+  "outcome": {
+    "x": 1
+  },
+  "question": {
+    "c_max": 2880.0,
+    "close_at": "2026-01-11T00:00:00Z",
+    "id": "q-binary-cash",
+    "open_at": "2026-01-01T00:00:00Z",
+    "outcome_space": {
+      "type": "binary"
+    },
+    "payout_mode": "cash",
+    "prior": [
+      0.5,
+      0.5
+    ],
+    "prize_pool_minor": 40000,
+    "scoring": {
+      "decay": 0.5,
+      "k": 2.0,
+      "reserve": 0.1,
+      "rule": "brier",
+      "scoring_version": "0.1.0"
+    }
+  },
+  "settlement": {
+    "gross_positive": 655.1999999999999,
+    "haircut": 0.6105006105006106,
+    "lines": [
+      {
+        "credits_burned_minor": 0,
+        "credits_earned_minor": 23040,
+        "lock_minor": 69120,
+        "net_points": 460.79999999999995,
+        "principal_id": "a",
+        "prize_minor": 28131
+      },
+      {
+        "credits_burned_minor": 8892,
+        "credits_earned_minor": 0,
+        "lock_minor": 8892,
+        "net_points": -88.91999999999989,
+        "principal_id": "b",
+        "prize_minor": 0
+      },
+      {
+        "credits_burned_minor": 0,
+        "credits_earned_minor": 0,
+        "lock_minor": 0,
+        "net_points": 0.0,
+        "principal_id": "c",
+        "prize_minor": 0
+      },
+      {
+        "credits_burned_minor": 0,
+        "credits_earned_minor": 9720,
+        "lock_minor": 66960,
+        "net_points": 194.39999999999998,
+        "principal_id": "d",
+        "prize_minor": 11868
+      }
+    ],
+    "net_total": 566.2800000000001,
+    "payout_mode": "cash",
+    "prizes_total_minor": 39999,
+    "refund_minor": 1,
+    "scores": [
+      {
+        "norm_points": 0.6399999999999999,
+        "points": 460.79999999999995,
+        "seq": 1
+      },
+      {
+        "norm_points": -0.12999999999999984,
+        "points": -88.91999999999989,
+        "seq": 2
+      },
+      {
+        "norm_points": 0.0,
+        "points": 0.0,
+        "seq": 3
+      },
+      {
+        "norm_points": 0.44999999999999996,
+        "points": 194.39999999999998,
+        "seq": 4
+      }
+    ]
+  },
+  "submissions": [
+    {
+      "c": 2880.0,
+      "forecaster_id": "A",
+      "pmf": [
+        0.30000000000000004,
+        0.7
+      ],
+      "principal_id": "a",
+      "seq": 1,
+      "submitted_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "c": 2736.0,
+      "forecaster_id": "B",
+      "pmf": [
+        0.35,
+        0.65
+      ],
+      "principal_id": "b",
+      "seq": 2,
+      "submitted_at": "2026-01-02T00:00:00Z"
+    },
+    {
+      "c": 2592.0,
+      "forecaster_id": "C",
+      "pmf": [
+        0.35,
+        0.65
+      ],
+      "principal_id": "c",
+      "seq": 3,
+      "submitted_at": "2026-01-03T00:00:00Z"
+    },
+    {
+      "c": 1728.0,
+      "forecaster_id": "D",
+      "pmf": [
+        0.09999999999999998,
+        0.9
+      ],
+      "principal_id": "d",
+      "seq": 4,
+      "submitted_at": "2026-01-09T00:00:00Z"
+    }
+  ]
+}

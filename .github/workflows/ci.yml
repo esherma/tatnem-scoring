@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.8"
+
+jobs:
+  lint:
+    name: Lint, types, workflow audit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.15"
+          enable-cache: false
+      - run: uv sync --locked
+      - run: uv run ruff check --output-format github .
+      - run: uv run ruff format --check .
+      - run: uv run pyright
+      - name: zizmor (GitHub Actions security audit)
+        run: uv run zizmor --offline --persona pedantic .github/workflows
+
+  secrets:
+    name: Secret scan (gitleaks, full history)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (checksum-verified)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum --check --strict
+          tar -xzf gitleaks.tgz gitleaks
+      - run: ./gitleaks git --redact --verbose --exit-code 1 .
+
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python }}
+          enable-cache: false
+      - run: uv sync --locked
+      - run: uv run pytest --cov --cov-report=term-missing
+        env:
+          HYPOTHESIS_PROFILE: ci
+
+  package:
+    name: Build and smoke-test the distribution
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.15"
+          enable-cache: false
+      - run: uv build
+      - name: Install the wheel in a clean venv and verify a fixture
+        run: |
+          uv venv --python 3.15 /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          /tmp/smoke/bin/fbscore --version
+          /tmp/smoke/bin/fbscore verify tests/fixtures/binary_cash_haircut.json
