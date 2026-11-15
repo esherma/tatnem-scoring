@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/esherma/tatnem-scoring/schemas/settlement-export.v0.schema.json",
+  "title": "Tatnem settlement export, format version 0",
+  "description": "Every input needed to recompute one question's settlement, plus the published settlement. Read by `fbscore verify`.",
+  "type": "object",
+  "required": ["format", "format_version", "question", "outcome", "submissions", "settlement"],
+  "additionalProperties": false,
+  "$defs": {
+    "pmf": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 2, "maxItems": 500},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "minor": {"type": "integer", "minimum": 0}
+  },
+  "properties": {
+    "format": {"const": "tatnem-settlement-export"},
+    "format_version": {"const": "0"},
+    "question": {
+      "type": "object",
+      "required": ["id", "outcome_space", "prior", "scoring", "c_max", "open_at", "close_at", "payout_mode", "prize_pool_minor"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "outcome_space": {
+          "oneOf": [
+            {"type": "object", "required": ["type"], "additionalProperties": false, "properties": {"type": {"const": "binary"}}},
+            {
+              "type": "object",
+              "required": ["type", "lo", "hi", "n_bins"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {"const": "numeric"},
+                "lo": {"type": "number"},
+                "hi": {"type": "number"},
+                "n_bins": {"type": "integer", "minimum": 2, "maximum": 500}
+              }
+            }
+          ]
+        },
+        "prior": {"$ref": "#/$defs/pmf"},
+        "scoring": {
+          "type": "object",
+          "required": ["rule", "k", "reserve", "decay", "scoring_version"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": {"enum": ["brier", "crps"]},
+            "k": {"type": "number", "exclusiveMinimum": 0},
+            "reserve": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+            "decay": {"type": "number", "minimum": 0, "maximum": 1},
+            "scoring_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+          }
+        },
+        "c_max": {"type": "number", "minimum": 0},
+        "open_at": {"$ref": "#/$defs/timestamp"},
+        "close_at": {"$ref": "#/$defs/timestamp"},
+        "payout_mode": {"enum": ["cash", "credit_prize", "sandbox"]},
+        "prize_pool_minor": {"$ref": "#/$defs/minor", "description": "USD cents (cash) or centi-credits (credit_prize, sandbox)."}
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["x"],
+      "additionalProperties": false,
+      "properties": {"x": {"type": "number", "description": "Resolved value as published (numeric outcomes are clamped by the rules)."}}
+    },
+    "submissions": {
+      "type": "array",
+      "description": "Accepted, non-voided submissions in seq order.",
+      "items": {
+        "type": "object",
+        "required": ["seq", "forecaster_id", "principal_id", "submitted_at", "pmf", "c"],
+        "additionalProperties": false,
+        "properties": {
+          "seq": {"type": "integer", "minimum": 1},
+          "forecaster_id": {"type": "string", "description": "Public handle or stable pseudonymous id."},
+          "principal_id": {"type": "string", "description": "Stable pseudonymous id; never PII."},
+          "submitted_at": {"$ref": "#/$defs/timestamp"},
+          "pmf": {"$ref": "#/$defs/pmf"},
+          "c": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "settlement": {
+      "type": "object",
+      "required": ["payout_mode", "net_total", "gross_positive", "haircut", "prizes_total_minor", "refund_minor", "scores", "lines"],
+      "additionalProperties": false,
+      "properties": {
+        "payout_mode": {"enum": ["cash", "credit_prize", "sandbox"]},
+        "net_total": {"type": "number"},
+        "gross_positive": {"type": "number", "minimum": 0},
+        "haircut": {"type": "number", "minimum": 0, "maximum": 1},
+        "prizes_total_minor": {"$ref": "#/$defs/minor"},
+        "refund_minor": {"$ref": "#/$defs/minor"},
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["seq", "points", "norm_points"],
+            "additionalProperties": false,
+            "properties": {"seq": {"type": "integer"}, "points": {"type": "number"}, "norm_points": {"type": "number"}}
+          }
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["principal_id", "net_points", "prize_minor", "credits_burned_minor", "credits_earned_minor", "lock_minor"],
+            "additionalProperties": false,
+            "properties": {
+              "principal_id": {"type": "string"},
+              "net_points": {"type": "number"},
+              "prize_minor": {"$ref": "#/$defs/minor"},
+              "credits_burned_minor": {"$ref": "#/$defs/minor"},
+              "credits_earned_minor": {"$ref": "#/$defs/minor", "description": "Cash: alpha-earned credits. Credit prize: minted credits (at most the floored positive net)."},
+              "lock_minor": {"$ref": "#/$defs/minor"}
+            }
+          }
+        }
+      }
+    }
+  }
+}
